@@ -1,0 +1,290 @@
+package main
+
+import (
+	"bufio"
+	"bytes"
+	"fmt"
+	"io"
+	"log"
+	"os"
+	"path/filepath"
+	"regexp"
+	"strings"
+	"syscall"
+	"time"
+	"unsafe"
+
+	"github.com/ledongthuc/pdf"
+)
+
+var (
+	pause, p, f, newname, NewPath, OldPath, newTitle, foo string
+	searchString1, searchString2, searchString3           string
+	nextChars1, nextChars2, nextChars3, nextChars4        int
+	kernel32                                              = syscall.NewLazyDLL("kernel32.dll")
+	procSetConsoleTitleW                                  = kernel32.NewProc("SetConsoleTitleW")
+)
+
+func findWord(content, searchString string, nextChars int) string {
+	r := regexp.MustCompile(searchString + `(.{0,` + fmt.Sprint(nextChars) + `})`)
+	match := r.FindStringSubmatch(content)
+	if len(match) >= 2 {
+		return match[1]
+	}
+	return ""
+}
+
+func setConsoleTitle(title string) { // для смены заголовока программы
+	ptrTitle, _ := syscall.UTF16PtrFromString(title)
+	_, _, _ = procSetConsoleTitleW.Call(uintptr(unsafe.Pointer(ptrTitle)))
+}
+
+// получение текста из PDF файла
+func ReadPlainTextFromPDF(pdfpath string) (text string, err error) {
+	f, r, err := pdf.Open(pdfpath) // открываем файл PDF
+
+	if err != nil {
+		return
+	}
+	defer f.Close()
+
+	var buf bytes.Buffer
+	b, err := r.GetPlainText() // получаем текст в байтовом виде
+	if err != nil {
+		return
+	}
+
+	buf.ReadFrom(b)
+	text = buf.String() // текст в привычном виде
+	return
+}
+
+// функция переименования файла сверяя с текстом в файле pdf
+func per(systech string) {
+	var ss []string
+	f = "systech_" + systech + ".txt" // файлы ответственных со списком ОО
+	p = "Введите любой символ и Enter для выхода из программы"
+
+	// Открываем текущую директорию
+	dir, err := os.Open(".")
+	if err != nil {
+		fmt.Println("He могу открыть директорию\n", err)
+		fmt.Println(p)
+		fmt.Scan(&pause)
+		return
+	}
+	defer dir.Close()
+
+	// Получаем список файлов и папок
+	files, err := dir.ReadDir(-1)
+	if err != nil {
+		fmt.Println("He могу получить список файлов\n", err)
+		fmt.Println(p)
+		fmt.Scan(&pause)
+		return
+	}
+
+	// открываем файл "systech_systech.txt"
+	fileoo, err := os.Open(f)
+	if err != nil {
+		fmt.Println("He могу открыть файл: "+f+". \n", err)
+		fmt.Println(p)
+		fmt.Scan(&pause)
+		return
+	}
+	defer fileoo.Close()
+
+	// читаем строки из файла "systech_systech.txt"
+	reader := bufio.NewReader(fileoo)
+	for {
+		line, err := reader.ReadString('\n')
+
+		if err != nil {
+			if err == io.EOF {
+				break
+			} else {
+				fmt.Println(err)
+				fmt.Println(p)
+				fmt.Scan(&pause)
+				return
+			}
+		}
+		sline := len(line)
+		line = line[:sline-2] // убираем лишние символы из названия ОО
+		ss = append(ss, line) // добавляем значение в слайс со списком ОО
+	}
+
+	for _, file := range files { // перебираем все файлы в папке
+		if !file.IsDir() && strings.HasSuffix(file.Name(), ".pdf") { // если файл pdf
+			for i := 0; i < len(ss); i++ { // перебираем все значения в слайсе со списком ОО
+				if strings.Contains(file.Name(), ss[i]) { //проверяем есть ли совпадения в тексте pdf с названием ОО
+					OldPath := "./" + file.Name()
+					NewPath := "./" + systech + "/" + file.Name()
+					fmt.Println(NewPath)
+					err := os.Rename(OldPath, NewPath) // перемещаем файл в папку системотехника
+					if err != nil {
+						log.Fatal(err)
+						fmt.Println(p)
+						fmt.Scan(&pause)
+					}
+					i = len(ss) // выоходим из цикла так как нашли и переименовали файл
+				}
+
+			}
+		}
+	}
+}
+
+func renameFromPdf() {
+	var ss []string                                               // слайс со списком всех объектов обслуживания
+	p = "Введите любой символ и Enter для продолжения или выхода" // Сообщение для паузы по завершении перемещения или при ошибке
+	foo = "all_OO.txt"                                            // файл со списком всех объектов обслуживания
+	searchString1 = "НАКЛАДНАЯ № "                                //искомая строка
+	nextChars1 = 15                                               // количество символов после найденой строки
+	searchString2 = "нителя"                                      //искомая строка
+	nextChars2 = 10                                               // количество символов после найденой строки
+	searchString3 = "на внутреннее перемещение"                   //искомая строка
+	nextChars3 = 15                                               // количество символов после найденой строки
+	nextChars4 = 10                                               // количество символов после найденой строки
+
+	//открываем папку в которой запускается программа
+	dir, err := os.Open(".")
+	if err != nil {
+		fmt.Println("Не могу открыть директорию\n", err)
+		fmt.Println(p)
+		fmt.Scan(&pause)
+		return
+	}
+	defer dir.Close()
+
+	// Получаем список файлов и папок
+	files, err := dir.ReadDir(-1)
+	if err != nil {
+		fmt.Println("Не могу получить список файлов\n", err)
+		fmt.Println(p)
+		fmt.Scan(&pause)
+		return
+	}
+
+	// открываем файл со списком всех объектов обслуживания
+	fileoo, err := os.Open(foo)
+	if err != nil {
+		fmt.Println("He могу открыть файл: "+foo+". \n", err)
+		fmt.Println(p)
+		fmt.Scan(&pause)
+		return
+	}
+	defer fileoo.Close()
+
+	// читаем строки из файла со списком всех объектов обслуживания
+	reader := bufio.NewReader(fileoo)
+	for {
+		line, err := reader.ReadString('\n') // считываем строку
+
+		if err != nil {
+			if err == io.EOF {
+				break
+			} else {
+				fmt.Println(err)
+				fmt.Println(p)
+				fmt.Scan(&pause)
+				return
+			}
+		}
+		sline := len(line)
+		line = line[:sline-2] // убираем лишние символы из названия ОО
+		ss = append(ss, line) // добавляем значение в слайс со списком ОО
+	}
+
+	for _, file := range files { // перебираем все файлы
+		if !file.IsDir() && strings.HasSuffix(file.Name(), ".pdf") { // если файл PDF
+			OldPath = "./" + file.Name()                      // имя файла источника
+			content, err := ReadPlainTextFromPDF(file.Name()) // получаем текст из PDF файла
+			if err != nil {
+				panic(err)
+			}
+
+			if strings.Contains(content, "отпуск материалов") {
+				result1 := findWord(content, searchString1, nextChars1)
+				result2 := findWord(content, searchString2, nextChars2)
+				newname = "(M-15) " + strings.Replace(result1, "/", "_", -1) + " от " + result2
+			} else if strings.Contains(content, "основных средств") {
+				result3 := findWord(content, searchString3, nextChars3)
+				result4 := findWord(content, result3, nextChars4)
+				newname = "(ОС-2) " + strings.Replace(result3, "/", "_", -1) + " от " + result4
+			}
+
+			for i := 0; i < len(ss); i++ { // перебираем значения в слайсе
+				if strings.Contains(content, ss[i]) { // если в тексте PDF встречается значение из слайса
+					s := strings.Replace(ss[i], ",", "", -1)
+					newname = s + "_" + newname // новое имя файла с названием ОО
+				}
+			}
+			NewPath = "./" + newname + ".pdf"
+			fmt.Println(newname) // выводим новое имя файла
+			fmt.Println(NewPath)
+			err = os.Rename(OldPath, NewPath) // переименовываем файл
+			if err != nil {
+				log.Fatal(err)
+				fmt.Println(p)
+				fmt.Scan(&pause)
+			}
+
+		}
+	}
+}
+
+func main() {
+	newTitle = "Переименование и распределение накладных(lukyanov_va)" // Вводим новое имя окна
+	setConsoleTitle(newTitle)                                          // Устанавливаем новое имя окна
+
+	fmt.Println("Программа перемещает накладные в формате pdf")
+	fmt.Println("из папки запуска программа и распределяет по ответственным.")
+	fmt.Println("Чтобы она это сделала, нужно подготовить txt файлы co списком OO.")
+	fmt.Println("Файл all_OO.txt заполнить всеми OO c запятой в конце как в накладной.")
+	fmt.Println("Файлы системотехников нужно называть по шаблону systech_XXXXX.txt,")
+	fmt.Println("где XXXXX это например фамилия системотехника")
+	fmt.Println("B конце файлов обязательно добавляем пустую последнюю строку, \nиначе не считается последнее значение")
+	fmt.Println("Так же следует соблюдать порядок файлов *.txt:")
+	fmt.Println("1 - системотехники, 2 - Закрытые(если есть такие накладные), 3 - Прочее")
+	fmt.Println()
+	fmt.Println("Введите любой символ на нажмите Enter для начала работы")
+	fmt.Println()
+	fmt.Println()
+	fmt.Scan(&pause)
+	start := time.Now() // старт отсчета времени выполнения
+
+	m, err := filepath.Glob("systech_*.txt") //выясняем количество файлов по шаблону
+	if err != nil {
+		panic(err)
+	}
+
+	renameFromPdf() // функция переименования файлов
+
+	for _, val := range m { // перебираем все файлы systech_*.txt
+		val = strings.Replace(val, "systech_", "", -1) // убираем из названия файла systech_
+		val = strings.Replace(val, ".txt", "", -1)     // убираем из названия файла .txt
+		_, err := os.Stat("./" + val)                  // проверяем существует ли папка
+		if os.IsNotExist(err) {                        // если папка не существует
+			err = os.Mkdir(val, 0777) // Создаем папку с правами доступа 0777
+			if err != nil {
+				fmt.Println("Ошибка создания папки: ", err)
+				return
+			}
+			fmt.Println("Папка " + val + " успешно создана")
+		} else if err != nil {
+			fmt.Println("Ошибка проверки существования папки:", err)
+			return
+		}
+
+		fmt.Println("Папка " + val + " уже существует")
+
+		per(val) // функция распределения файлов по системотехникам
+	}
+
+	fmt.Printf("\n\n")
+	duration := time.Since(start) //получаем время, прошедшее с момента старта
+	fmt.Println(" Переименование и перемещение завершено!\n", "Время выполнения: ", duration, "\n\n", p)
+	fmt.Println()
+	fmt.Scan(&pause)
+}
