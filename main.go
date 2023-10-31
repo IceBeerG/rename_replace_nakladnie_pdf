@@ -40,7 +40,7 @@ func main() {
 	// Устанавливаем файл в качестве вывода для логгера
 	log.SetOutput(logFile)
 
-	log.Println("Начало работы приложения")
+	log.Println("\nНачало работы приложения")
 	newTitle = "Переименование и распределение накладных(lukyanov_va)" // Вводим новое имя окна
 	setConsoleTitle(newTitle)                                          // Устанавливаем новое имя окна
 
@@ -51,8 +51,7 @@ func main() {
 	fmt.Println("Файлы системотехников нужно называть по шаблону systech_XXXXX.txt,")
 	fmt.Println("где XXXXX это например фамилия системотехника")
 	fmt.Println("B конце файлов обязательно добавляем пустую последнюю строку, \nиначе не считается последнее значение")
-	fmt.Println("Так же следует соблюдать порядок файлов *.txt:")
-	fmt.Println("1 - системотехники, 2 - Закрытые(если есть такие накладные), 3 - Прочее")
+	fmt.Println("В случае закрытия окна без оповещения об окончании работы, смотрите файл nakladnie.log")
 	fmt.Println("\nВведите любой символ на нажмите Enter для начала работы")
 	fmt.Println()
 	fmt.Println()
@@ -61,7 +60,7 @@ func main() {
 
 	m, err := filepath.Glob("systech_*.txt") //выясняем количество файлов по шаблону
 	if err != nil {
-		log.Fatal(err, getLine())
+		log.Fatal("[ERR]", err, getLine())
 	}
 
 	renameFromPdf() // функция переименования файлов
@@ -73,12 +72,12 @@ func main() {
 		if os.IsNotExist(err) {                        // если папка не существует
 			err = os.Mkdir(val, 0777) // Создаем папку с правами доступа 0777
 			if err != nil {
-				log.Fatal("Ошибка создания папки: ", val, err, getLine())
+				log.Fatal("[ERR] Ошибка создания папки: ", val, err, getLine())
 				return
 			}
 			fmt.Println("Папка " + val + " успешно создана")
 		} else if err != nil {
-			log.Fatal(err, getLine())
+			log.Fatal("[ERR]", err, getLine())
 			return
 		}
 
@@ -114,7 +113,7 @@ func ReadPlainTextFromPDF(pdfpath string) (text string, err error) {
 	f, r, err := pdf.Open(pdfpath) // открываем файл PDF
 
 	if err != nil {
-		log.Fatal(err, getLine())
+		log.Fatal("[ERR] ", err, getLine())
 		return
 	}
 	defer f.Close()
@@ -122,7 +121,7 @@ func ReadPlainTextFromPDF(pdfpath string) (text string, err error) {
 	var buf bytes.Buffer
 	b, err := r.GetPlainText() // получаем текст в байтовом виде
 	if err != nil {
-		log.Fatal(err, getLine())
+		log.Fatal("[ERR] ", err, getLine())
 		return
 	}
 
@@ -140,7 +139,7 @@ func per(systech string) {
 	// Открываем текущую директорию
 	dir, err := os.Open(".")
 	if err != nil {
-		log.Fatal("He могу открыть директорию\n", err, getLine())
+		log.Fatal("[ERR] He могу открыть директорию\n", err, getLine())
 		return
 	}
 	defer dir.Close()
@@ -148,14 +147,14 @@ func per(systech string) {
 	// Получаем список файлов и папок
 	files, err := dir.ReadDir(-1)
 	if err != nil {
-		log.Fatal("He могу получить список файлов\n", err, getLine())
+		log.Fatal("[ERR] He могу получить список файлов\n", err, getLine())
 		return
 	}
 
 	// открываем файл "systech_systech.txt"
 	fileoo, err := os.Open(f)
 	if err != nil {
-		log.Fatal("He могу открыть файл: "+f+". \n", err, getLine())
+		log.Fatal("[ERR] He могу открыть файл: "+f+". \n", err, getLine())
 		return
 	}
 	defer fileoo.Close()
@@ -169,7 +168,7 @@ func per(systech string) {
 			if err == io.EOF {
 				break
 			} else {
-				log.Fatal("Ошибка чтения строки в файле ", fileoo, "\n", err, getLine())
+				log.Fatal("[ERR] Ошибка чтения строки в файле ", fileoo, "\n", err, getLine())
 				return
 			}
 		}
@@ -188,7 +187,7 @@ func per(systech string) {
 					log.Printf("Перемещаем файл %s в папку %s\n", file.Name(), systech)
 					err := os.Rename(OldPath, NewPath) // перемещаем файл в папку системотехника
 					if err != nil {
-						log.Fatal("Ошибка перемещения файла\n", err, getLine())
+						log.Fatal("[ERR] Ошибка перемещения файла\n", err, getLine())
 					}
 					i = len(ss) // выходим из цикла так как нашли и переименовали файл
 				}
@@ -213,7 +212,7 @@ func renameFromPdf() {
 	//открываем папку в которой запускается программа
 	dir, err := os.Open(".")
 	if err != nil {
-		log.Fatal("Не могу открыть директорию\n", err, getLine())
+		log.Fatal("[ERR] Не могу открыть директорию\n", err, getLine())
 		return
 	}
 	defer dir.Close()
@@ -221,14 +220,14 @@ func renameFromPdf() {
 	// Получаем список файлов и папок
 	files, err := dir.ReadDir(-1)
 	if err != nil {
-		log.Fatal("Не могу получить список файлов\n", err, getLine())
+		log.Fatal("[ERR] Не могу получить список файлов\n", err, getLine())
 		return
 	}
 
 	// открываем файл со списком всех объектов обслуживания
 	fileoo, err := os.Open(foo)
 	if err != nil {
-		log.Fatal("He могу открыть файл: "+foo+". \n", err, getLine())
+		log.Fatal("[ERR] He могу открыть файл: "+foo+". \n", err, getLine())
 		return
 	}
 	defer fileoo.Close()
@@ -242,7 +241,7 @@ func renameFromPdf() {
 			if err == io.EOF {
 				break
 			} else {
-				log.Fatal("Ошибка считывания строки\n", err, getLine())
+				log.Fatal("[ERR] Ошибка считывания строки\n", err, getLine())
 				return
 			}
 		}
@@ -256,7 +255,7 @@ func renameFromPdf() {
 			OldPath = "./" + file.Name()                      // имя файла источника
 			content, err := ReadPlainTextFromPDF(file.Name()) // получаем текст из PDF файла
 			if err != nil {
-				log.Fatal("Не могу прочитать файл\n", err, getLine())
+				log.Fatal("[ERR] Не могу прочитать файл\n", err, getLine())
 			}
 
 			if strings.Contains(content, "отпуск материалов") {
@@ -276,15 +275,18 @@ func renameFromPdf() {
 				}
 			}
 			NewPath = "./" + newname + ".pdf"
-			fmt.Println(newname) // выводим новое имя файла
-			fmt.Println(NewPath)
-			logString := fmt.Sprintf("Файл %s переименовываем в %s", file.Name(), newname)
-			log.Println(logString)
-			err = os.Rename(OldPath, NewPath) // переименовываем файл
-			if err != nil {
-				log.Fatal("Ошибка переименования файла\n", err, getLine())
+			if NewPath != OldPath {
+				fmt.Println(newname) // выводим новое имя файла
+				fmt.Println(NewPath)
+				logString := fmt.Sprintf("Файл %s переименовываем в %s", file.Name(), newname)
+				log.Println(logString)
+				err = os.Rename(OldPath, NewPath) // переименовываем файл
+				if err != nil {
+					log.Fatal("[ERR] Ошибка переименования файла\n", err, getLine())
+				} else {
+					log.Println("Имена совпадают, переименовывание не требуется.")
+				}
 			}
-
 		}
 	}
 }
