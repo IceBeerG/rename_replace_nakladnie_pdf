@@ -9,6 +9,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"runtime"
 	"strings"
 	"syscall"
 	"time"
@@ -24,6 +25,74 @@ var (
 	kernel32                                              = syscall.NewLazyDLL("kernel32.dll")
 	procSetConsoleTitleW                                  = kernel32.NewProc("SetConsoleTitleW")
 )
+
+func main() {
+	logFilePath := "errors.log" // Имя файла для логирования ошибок
+	logFilePath = filepath.Join(filepath.Dir(os.Args[0]), logFilePath)
+
+	// Открываем файл для записи логов
+	logFile, err := os.OpenFile(logFilePath, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)
+	if err != nil {
+		log.Fatal("Ошибка открытия файла", err, getLine())
+	}
+	defer logFile.Close()
+
+	// Устанавливаем файл в качестве вывода для логгера
+	log.SetOutput(logFile)
+
+	newTitle = "Переименование и распределение накладных(lukyanov_va)" // Вводим новое имя окна
+	setConsoleTitle(newTitle)                                          // Устанавливаем новое имя окна
+
+	fmt.Println("Программа перемещает накладные в формате pdf")
+	fmt.Println("из папки запуска программа и распределяет по ответственным.")
+	fmt.Println("Чтобы она это сделала, нужно подготовить txt файлы co списком OO.")
+	fmt.Println("Файл all_OO.txt заполнить всеми OO c запятой в конце как в накладной.")
+	fmt.Println("Файлы системотехников нужно называть по шаблону systech_XXXXX.txt,")
+	fmt.Println("где XXXXX это например фамилия системотехника")
+	fmt.Println("B конце файлов обязательно добавляем пустую последнюю строку, \nиначе не считается последнее значение")
+	fmt.Println("Так же следует соблюдать порядок файлов *.txt:")
+	fmt.Println("1 - системотехники, 2 - Закрытые(если есть такие накладные), 3 - Прочее")
+	fmt.Println()
+	fmt.Println("Введите любой символ на нажмите Enter для начала работы")
+	fmt.Println()
+	fmt.Println()
+	fmt.Scan(&pause)
+	start := time.Now() // старт отсчета времени выполнения
+
+	m, err := filepath.Glob("systech_*.txt") //выясняем количество файлов по шаблону
+	if err != nil {
+		log.Fatal(err, getLine())
+	}
+
+	renameFromPdf() // функция переименования файлов
+
+	for _, val := range m { // перебираем все файлы systech_*.txt
+		val = strings.Replace(val, "systech_", "", -1) // убираем из названия файла systech_
+		val = strings.Replace(val, ".txt", "", -1)     // убираем из названия файла .txt
+		_, err := os.Stat("./" + val)                  // проверяем существует ли папка
+		if os.IsNotExist(err) {                        // если папка не существует
+			err = os.Mkdir(val, 0777) // Создаем папку с правами доступа 0777
+			if err != nil {
+				log.Fatal("Ошибка создания папки: ", val, err, getLine())
+				return
+			}
+			fmt.Println("Папка " + val + " успешно создана")
+		} else if err != nil {
+			log.Fatal(err, getLine())
+			return
+		}
+
+		fmt.Println("Папка " + val + " уже существует")
+
+		per(val) // функция распределения файлов по системотехникам
+	}
+
+	fmt.Printf("\n\n")
+	duration := time.Since(start) //получаем время, прошедшее с момента старта
+	fmt.Println(" Переименование и перемещение завершено!\n", "Время выполнения: ", duration, "\n\n", p)
+	fmt.Println()
+	fmt.Scan(&pause)
+}
 
 func findWord(content, searchString string, nextChars int) string {
 	r := regexp.MustCompile(searchString + `(.{0,` + fmt.Sprint(nextChars) + `})`)
@@ -44,6 +113,7 @@ func ReadPlainTextFromPDF(pdfpath string) (text string, err error) {
 	f, r, err := pdf.Open(pdfpath) // открываем файл PDF
 
 	if err != nil {
+		log.Fatal(err, getLine())
 		return
 	}
 	defer f.Close()
@@ -51,6 +121,7 @@ func ReadPlainTextFromPDF(pdfpath string) (text string, err error) {
 	var buf bytes.Buffer
 	b, err := r.GetPlainText() // получаем текст в байтовом виде
 	if err != nil {
+		log.Fatal(err, getLine())
 		return
 	}
 
@@ -69,6 +140,7 @@ func per(systech string) {
 	dir, err := os.Open(".")
 	if err != nil {
 		fmt.Println("He могу открыть директорию\n", err)
+		log.Fatal(err, getLine())
 		fmt.Println(p)
 		fmt.Scan(&pause)
 		return
@@ -78,6 +150,7 @@ func per(systech string) {
 	// Получаем список файлов и папок
 	files, err := dir.ReadDir(-1)
 	if err != nil {
+		log.Fatal(err, getLine())
 		fmt.Println("He могу получить список файлов\n", err)
 		fmt.Println(p)
 		fmt.Scan(&pause)
@@ -87,9 +160,7 @@ func per(systech string) {
 	// открываем файл "systech_systech.txt"
 	fileoo, err := os.Open(f)
 	if err != nil {
-		fmt.Println("He могу открыть файл: "+f+". \n", err)
-		fmt.Println(p)
-		fmt.Scan(&pause)
+		log.Fatal("He могу открыть файл: "+f+". \n", err, getLine())
 		return
 	}
 	defer fileoo.Close()
@@ -103,9 +174,7 @@ func per(systech string) {
 			if err == io.EOF {
 				break
 			} else {
-				fmt.Println(err)
-				fmt.Println(p)
-				fmt.Scan(&pause)
+				log.Fatal("Ошибка чтения строки в файле ", fileoo, "\n", err, getLine())
 				return
 			}
 		}
@@ -123,9 +192,7 @@ func per(systech string) {
 					fmt.Println(NewPath)
 					err := os.Rename(OldPath, NewPath) // перемещаем файл в папку системотехника
 					if err != nil {
-						log.Fatal(err)
-						fmt.Println(p)
-						fmt.Scan(&pause)
+						log.Fatal("Ошибка переименования файла\n", err, getLine())
 					}
 					i = len(ss) // выоходим из цикла так как нашли и переименовали файл
 				}
@@ -150,9 +217,7 @@ func renameFromPdf() {
 	//открываем папку в которой запускается программа
 	dir, err := os.Open(".")
 	if err != nil {
-		fmt.Println("Не могу открыть директорию\n", err)
-		fmt.Println(p)
-		fmt.Scan(&pause)
+		log.Fatal("Не могу открыть директорию\n", err, getLine())
 		return
 	}
 	defer dir.Close()
@@ -160,18 +225,14 @@ func renameFromPdf() {
 	// Получаем список файлов и папок
 	files, err := dir.ReadDir(-1)
 	if err != nil {
-		fmt.Println("Не могу получить список файлов\n", err)
-		fmt.Println(p)
-		fmt.Scan(&pause)
+		log.Fatal("Не могу получить список файлов\n", err, getLine())
 		return
 	}
 
 	// открываем файл со списком всех объектов обслуживания
 	fileoo, err := os.Open(foo)
 	if err != nil {
-		fmt.Println("He могу открыть файл: "+foo+". \n", err)
-		fmt.Println(p)
-		fmt.Scan(&pause)
+		log.Fatal("He могу открыть файл: "+foo+". \n", err, getLine())
 		return
 	}
 	defer fileoo.Close()
@@ -185,9 +246,7 @@ func renameFromPdf() {
 			if err == io.EOF {
 				break
 			} else {
-				fmt.Println(err)
-				fmt.Println(p)
-				fmt.Scan(&pause)
+				log.Fatal("Ошибка считывания строки\n", err, getLine())
 				return
 			}
 		}
@@ -201,7 +260,7 @@ func renameFromPdf() {
 			OldPath = "./" + file.Name()                      // имя файла источника
 			content, err := ReadPlainTextFromPDF(file.Name()) // получаем текст из PDF файла
 			if err != nil {
-				panic(err)
+				log.Fatal("Не могу прочитать файл\n", err, getLine())
 			}
 
 			if strings.Contains(content, "отпуск материалов") {
@@ -225,7 +284,7 @@ func renameFromPdf() {
 			fmt.Println(NewPath)
 			err = os.Rename(OldPath, NewPath) // переименовываем файл
 			if err != nil {
-				log.Fatal(err)
+				log.Fatal("Ошибка переименования файла\n", err, getLine())
 				fmt.Println(p)
 				fmt.Scan(&pause)
 			}
@@ -234,57 +293,8 @@ func renameFromPdf() {
 	}
 }
 
-func main() {
-	newTitle = "Переименование и распределение накладных(lukyanov_va)" // Вводим новое имя окна
-	setConsoleTitle(newTitle)                                          // Устанавливаем новое имя окна
-
-	fmt.Println("Программа перемещает накладные в формате pdf")
-	fmt.Println("из папки запуска программа и распределяет по ответственным.")
-	fmt.Println("Чтобы она это сделала, нужно подготовить txt файлы co списком OO.")
-	fmt.Println("Файл all_OO.txt заполнить всеми OO c запятой в конце как в накладной.")
-	fmt.Println("Файлы системотехников нужно называть по шаблону systech_XXXXX.txt,")
-	fmt.Println("где XXXXX это например фамилия системотехника")
-	fmt.Println("B конце файлов обязательно добавляем пустую последнюю строку, \nиначе не считается последнее значение")
-	fmt.Println("Так же следует соблюдать порядок файлов *.txt:")
-	fmt.Println("1 - системотехники, 2 - Закрытые(если есть такие накладные), 3 - Прочее")
-	fmt.Println()
-	fmt.Println("Введите любой символ на нажмите Enter для начала работы")
-	fmt.Println()
-	fmt.Println()
-	fmt.Scan(&pause)
-	start := time.Now() // старт отсчета времени выполнения
-
-	m, err := filepath.Glob("systech_*.txt") //выясняем количество файлов по шаблону
-	if err != nil {
-		panic(err)
-	}
-
-	renameFromPdf() // функция переименования файлов
-
-	for _, val := range m { // перебираем все файлы systech_*.txt
-		val = strings.Replace(val, "systech_", "", -1) // убираем из названия файла systech_
-		val = strings.Replace(val, ".txt", "", -1)     // убираем из названия файла .txt
-		_, err := os.Stat("./" + val)                  // проверяем существует ли папка
-		if os.IsNotExist(err) {                        // если папка не существует
-			err = os.Mkdir(val, 0777) // Создаем папку с правами доступа 0777
-			if err != nil {
-				fmt.Println("Ошибка создания папки: ", err)
-				return
-			}
-			fmt.Println("Папка " + val + " успешно создана")
-		} else if err != nil {
-			fmt.Println("Ошибка проверки существования папки:", err)
-			return
-		}
-
-		fmt.Println("Папка " + val + " уже существует")
-
-		per(val) // функция распределения файлов по системотехникам
-	}
-
-	fmt.Printf("\n\n")
-	duration := time.Since(start) //получаем время, прошедшее с момента старта
-	fmt.Println(" Переименование и перемещение завершено!\n", "Время выполнения: ", duration, "\n\n", p)
-	fmt.Println()
-	fmt.Scan(&pause)
+// получение строки кода где возникла ошибка
+func getLine() int {
+	_, _, line, _ := runtime.Caller(1)
+	return line
 }
