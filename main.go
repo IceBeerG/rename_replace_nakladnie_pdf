@@ -27,7 +27,7 @@ var (
 )
 
 func main() {
-	logFilePath := "errors.log" // Имя файла для логирования ошибок
+	logFilePath := "nakladnie.log" // Имя файла для логирования ошибок
 	logFilePath = filepath.Join(filepath.Dir(os.Args[0]), logFilePath)
 
 	// Открываем файл для записи логов
@@ -40,6 +40,7 @@ func main() {
 	// Устанавливаем файл в качестве вывода для логгера
 	log.SetOutput(logFile)
 
+	log.Println("Начало работы приложения")
 	newTitle = "Переименование и распределение накладных(lukyanov_va)" // Вводим новое имя окна
 	setConsoleTitle(newTitle)                                          // Устанавливаем новое имя окна
 
@@ -52,8 +53,7 @@ func main() {
 	fmt.Println("B конце файлов обязательно добавляем пустую последнюю строку, \nиначе не считается последнее значение")
 	fmt.Println("Так же следует соблюдать порядок файлов *.txt:")
 	fmt.Println("1 - системотехники, 2 - Закрытые(если есть такие накладные), 3 - Прочее")
-	fmt.Println()
-	fmt.Println("Введите любой символ на нажмите Enter для начала работы")
+	fmt.Println("\nВведите любой символ на нажмите Enter для начала работы")
 	fmt.Println()
 	fmt.Println()
 	fmt.Scan(&pause)
@@ -82,7 +82,7 @@ func main() {
 			return
 		}
 
-		fmt.Println("Папка " + val + " уже существует")
+		// fmt.Println("Папка " + val + " уже существует")
 
 		per(val) // функция распределения файлов по системотехникам
 	}
@@ -92,6 +92,7 @@ func main() {
 	fmt.Println(" Переименование и перемещение завершено!\n", "Время выполнения: ", duration, "\n\n", p)
 	fmt.Println()
 	fmt.Scan(&pause)
+	log.Println("Программа закончила свою работу")
 }
 
 func findWord(content, searchString string, nextChars int) string {
@@ -139,10 +140,7 @@ func per(systech string) {
 	// Открываем текущую директорию
 	dir, err := os.Open(".")
 	if err != nil {
-		fmt.Println("He могу открыть директорию\n", err)
-		log.Fatal(err, getLine())
-		fmt.Println(p)
-		fmt.Scan(&pause)
+		log.Fatal("He могу открыть директорию\n", err, getLine())
 		return
 	}
 	defer dir.Close()
@@ -150,10 +148,7 @@ func per(systech string) {
 	// Получаем список файлов и папок
 	files, err := dir.ReadDir(-1)
 	if err != nil {
-		log.Fatal(err, getLine())
-		fmt.Println("He могу получить список файлов\n", err)
-		fmt.Println(p)
-		fmt.Scan(&pause)
+		log.Fatal("He могу получить список файлов\n", err, getLine())
 		return
 	}
 
@@ -190,11 +185,12 @@ func per(systech string) {
 					OldPath := "./" + file.Name()
 					NewPath := "./" + systech + "/" + file.Name()
 					fmt.Println(NewPath)
+					log.Printf("Перемещаем файл %s в папку %s\n", file.Name(), systech)
 					err := os.Rename(OldPath, NewPath) // перемещаем файл в папку системотехника
 					if err != nil {
-						log.Fatal("Ошибка переименования файла\n", err, getLine())
+						log.Fatal("Ошибка перемещения файла\n", err, getLine())
 					}
-					i = len(ss) // выоходим из цикла так как нашли и переименовали файл
+					i = len(ss) // выходим из цикла так как нашли и переименовали файл
 				}
 
 			}
@@ -282,11 +278,11 @@ func renameFromPdf() {
 			NewPath = "./" + newname + ".pdf"
 			fmt.Println(newname) // выводим новое имя файла
 			fmt.Println(NewPath)
+			logString := fmt.Sprintf("Файл %s переименовываем в %s", file.Name(), newname)
+			log.Println(logString)
 			err = os.Rename(OldPath, NewPath) // переименовываем файл
 			if err != nil {
 				log.Fatal("Ошибка переименования файла\n", err, getLine())
-				fmt.Println(p)
-				fmt.Scan(&pause)
 			}
 
 		}
